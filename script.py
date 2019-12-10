@@ -6,13 +6,14 @@ import matplotlib.pyplot as plt
 
 import cnn
 
-from sklearn.naive_bayes import MultinomialNB
+from sklearn.naive_bayes import MultinomialNB, GaussianNB
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_validate, KFold, StratifiedKFold, GridSearchCV, cross_val_score
+from sklearn.decomposition import PCA
 
 # https://pypi.org/project/emnist/
 
@@ -39,7 +40,7 @@ def reshape_flatten(data):
 
 if __name__ == "__main__":
 
-    f1=open('./testfile', 'w+')
+    f1=open('./results_naive.txt', 'w+')
     # for ds_name in emnist.list_datasets():
     f1.write('-'*20 + '\nRunning on the dataset '+ emnist.list_datasets()[0] + '\n' + '-'*20 + '\n')
     print('-'*20 + '\nRunning on the dataset '+ emnist.list_datasets()[0] + '\n' + '-'*20)
@@ -60,46 +61,42 @@ if __name__ == "__main__":
     train_images = reshape_flatten(train_images)#[:n]
     test_images = reshape_flatten(test_images)#[:n]
 
-    train_labels = train_labels#[:n]
-    test_labels = test_labels#[:n]
+    # train_labels = train_labels[:n]
+    # test_labels = test_labels[:n]
 
     algos = {
-        'Naive Bayes': MultinomialNB(),
+        'Naive Bayes': GaussianNB(),
         # 'Logistic Regression': LogisticRegression(verbose=True),
-        # 'KNN': KNeighborsClassifier(),
+        # 'KNN': KNeighborsClassifier(n_neighbors = 60, n_jobs = -1),
         # 'Random Forest': RandomForestClassifier(n_estimators=100),
         # 'SVM': svm.SVC(gamma='scale', C=10, kernel='linear', verbose=True),
     }
-    
-    for key, clf in algos.items():
-        print('Running algorithm', key)
-        f1.write('\nRunning algorithm' + key + '\n')
-        clf.fit(train_images, train_labels)
-        
-        y_predicted = clf.predict(test_images)
+    sfold = StratifiedKFold(n_splits=10, shuffle=True, random_state=2)
+    kfold = KFold(n_splits=10, random_state=7)
 
-        sfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=2)
-        kfold = KFold(n_splits=10, random_state=7)
-        result = cross_validate(clf, test_images, test_labels, cv=kfold, scoring=['f1_macro', 'accuracy', 'balanced_accuracy'])
-        
-        # GridSearchCV ---
-        
-        print("Accuracy = {} %".format(accuracy_score(test_labels, y_predicted)*100))
-        # print("Classification Report \n {}".format(classification_report(test_labels, y_predicted, labels=np.unique(test_labels))))    
-        # print("Train F1-Values \n {}".format(result['train_f1_macro'])) 
-        # f1.write("Train F1-Values \n {}\n".format(result['train_f1_macro']))
-        # print("Test F1-Values \n {}".format(result['test_f1_macro']))   
-        # f1.write("Test F1-Values \n {}\n".format(result['test_f1_macro'])) 
-        # print("Train Accuracy \n {}".format(result['train_accuracy']))   
-        # f1.write("Train Accuracy \n {}\n".format(result['train_accuracy'])) 
-        # print("Test Accuracy \n {}".format(result['test_accuracy']))   
-        # f1.write("Test Accuracy \n {}\n".format(result['test_accuracy'])) 
+    fold_types = {'Stratified Cross Validation':sfold, 'Non-Stratified Cross Validation':kfold}
 
-        for key, data in enumerate(result):
-            f1.write('--'*20 + '\n' + data + '\n' + '--'*20 + '\n')
-            for j, item in enumerate(result[data]):
-                print(j, item)
-                f1.write(str(j)+ ' -- ' + str(item) + '\n')
+    pca = PCA(n_components=16*16)
+    train_images = pca.fit_transform(train_images)
+    test_images = pca.transform(test_images)
+
+    for name, fold_type in fold_types.items():
+        f1.write('\nRunning with ' + name + '\n')
+        for key, clf in algos.items():
+            f1.write('\nRunning algorithm: ' + key + '\n')
+            clf.fit(train_images, train_labels)
+            
+            y_predicted = clf.predict(test_images)
+
+            result = cross_validate(clf, test_images, test_labels, cv=fold_type, scoring=['f1_macro', 'accuracy', 'balanced_accuracy'])
+            
+            f1.write("Accuracy = {} % \n".format(accuracy_score(test_labels, y_predicted)*100))
+            f1.write("Classification Report \n {} \n".format(classification_report(test_labels, y_predicted, labels=np.unique(test_labels))))
+
+            for key, data in enumerate(result):
+                f1.write('--'*20 + '\n' + data + '\n' + '--'*20 + '\n')
+                for j, item in enumerate(result[data]):
+                    f1.write(str(j)+ ' -- ' + str(item) + '\n')
 
 
     f1.close()
