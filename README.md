@@ -5,8 +5,8 @@ The goal is to learn how to compare and evaluate different algorithms. The task 
 
 We worked on EMNIST data set and compared three classification algorithms.
 
-- [You can find the final report as pdf](link here)
-- [And initial draft](Link here)
+- [You can find the final report as pdf](https://github.com/BedirT/EMNIST-Evaluation/blob/master/EMNIST_Evaluation_final_draft.pdf)
+- [And initial draft](https://github.com/BedirT/EMNIST-Evaluation/blob/master/EMNIST_Evaluation_initial_draft.pdf)
 
 Tools used:
 
